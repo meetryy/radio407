@@ -1,0 +1,2 @@
+buttons.c:43:6:btnScan	24	static
+buttons.c:15:6:btnUpdateFromADC	0	static

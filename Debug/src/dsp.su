@@ -1,0 +1,10 @@
+dsp.c:18:6:dspInit	24	static
+dsp.c:38:6:dspStartAudio	0	static
+dsp.c:42:6:dspStopAudio	0	static
+dsp.c:64:6:bufferDeserialize	12	static
+dsp.c:76:6:bufferSerialize	16	static
+dsp.c:128:6:dspProc	10272	static
+dsp.c:225:7:getAudioLoad	0	static
+dsp.c:234:7:getAudioLoadPossible	0	static
+dsp.c:239:6:HAL_I2SEx_TxRxCpltCallback	0	static
+dsp.c:244:6:HAL_I2SEx_TxRxHalfCpltCallback	0	static

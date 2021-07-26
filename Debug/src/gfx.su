@@ -1,0 +1,7 @@
+gfx.c:12:9:Point	0	static
+gfx.c:40:6:gfxLabelSet	20	static
+gfx.c:25:6:gfxItemsInit	24	static
+gfx.c:53:6:gfxBarSet	0	static
+gfx.c:65:6:btnTest1	16	static
+gfx.c:68:6:btnTest2	16	static
+gfx.c:80:6:gfxItemsRedraw	64	static

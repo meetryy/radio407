@@ -1,0 +1,6 @@
+lcd.c:4:12:screen	0	static
+lcd.c:6:6:LCDinit	56	static
+lcd.c:21:6:LCDtestDraw	48	static
+lcd.c:25:6:LCDdrawIndicator	16	static
+lcd.c:31:6:LCDdrawFFT	56	static
+lcd.c:51:6:LCDdebugText	0	static

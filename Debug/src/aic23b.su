@@ -1,0 +1,10 @@
+aic23b.c:20:6:AICtx	16	static
+aic23b.c:29:6:AICsetLineInMute	32	static
+aic23b.c:35:6:AICsetLineVol	32	static
+aic23b.c:44:6:AICsetHPVol	24	static
+aic23b.c:54:6:AICsetHPVolPercent	32	static
+aic23b.c:62:6:AICsetLineVolPercent	32	static
+aic23b.c:71:6:AICmuteDAC	24	static
+aic23b.c:77:6:AICpowerUp	24	static
+aic23b.c:99:6:AICpowerDowm	16	static
+aic23b.c:112:6:AICinit	40	static

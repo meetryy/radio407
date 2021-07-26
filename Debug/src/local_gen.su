@@ -1,0 +1,3 @@
+local_gen.c:14:6:genInit	8	static
+local_gen.c:20:6:genSetFreq	8	static
+local_gen.c:25:6:genGetValue	56	static

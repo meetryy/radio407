@@ -1,0 +1,5 @@
+fir.c:17:6:fftInit	0	static
+fir.c:26:6:fftTest	8	static
+fir.c:32:6:firInit	16	static
+fir.c:40:6:firTest	0	static
+fir.c:52:6:convolve	56	static

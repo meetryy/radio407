@@ -1,0 +1,2 @@
+adc.c:18:6:adcStart	0	static
+adc.c:24:6:adcSmoothen	0	static

@@ -1,0 +1,10 @@
+tools.c:23:6:debugClearTerminal	0	static
+tools.c:48:6:debugPrint	40	static
+tools.c:91:6:debugPrintColor	100	static
+tools.c:142:6:debugPrintSameLine	528	static
+tools.c:153:7:msPerOperation	16	static
+tools.c:172:6:debugPinInit	8	static
+tools.c:184:6:debugPinSet	0	static
+tools.c:188:6:debugInit	16	static
+tools.c:199:10:preciseTimerValue	0	static
+tools.c:203:6:preciseTimerIncrease	0	static

@@ -23,6 +23,7 @@ void dbgTx(char* text, int len);
 void debugPrintColor(int color, const char *fmt, ...);
 void debugPrint(const char *fmt, ...);
 void debugClearTerminal(void);
+void debugPrintFast(const char *fmt, ...);
 
 void testMethod(void);
 float msPerOperation(int times);
@@ -31,6 +32,4 @@ void debugPinInit(void);
 void debugPinSet(bool i);
 void debugInit(void);
 
-uint32_t preciseTimerValue();
-void preciseTimerIncrease();
 

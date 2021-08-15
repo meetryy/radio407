@@ -1,4 +1,9 @@
 #include "lcd.h"
+#include "fft.h"
+
+#include "tools.h"
+#include "soft_sched.h"
+//#include "gfx.h"
 
 ili9341_t *_screen;
 ili9341_t *screen(void) {return _screen;}
@@ -19,7 +24,18 @@ void LCDinit(void){
 }
 
 void LCDtestDraw(void){
-	ili9341_draw_line(_screen, rand()%((2<<16)-1), rand()%320, rand()%240, rand()%320, rand()%240);
+	//ili9341_draw_line(_screen, rand()%((2<<16)-1), rand()%320, rand()%240, rand()%320, rand()%240);
+	int w=128*2;
+	int h=60;
+
+	uint16_t d[h*w];
+	for (int i=0; i<(h*w);i+=4){
+		d[i]=ILI9341_BLUE;
+		d[i+1]=ILI9341_BLUE;
+		d[i+2]=ILI9341_GREEN;
+		d[i+3]=ILI9341_GREEN;
+	}
+	ili9341_fill_data(_screen, ILI9341_WHITE, 120, 180, w, h, d);
 }
 
 void LCDdrawIndicator(int isOn){
@@ -28,6 +44,7 @@ void LCDdrawIndicator(int isOn){
 
 #include "fir.h"
 
+/*
 void LCDdrawFFT(void){
 	int number = FFT_LEN;
 
@@ -47,6 +64,7 @@ void LCDdrawFFT(void){
 	ili9341_draw_rect(_screen, ILI9341_WHITE, 1, 10, 300, 150);
 
 }
+*/
 
 void LCDdebugText(char* text){
 /*

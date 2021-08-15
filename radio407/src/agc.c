@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "global.h"
 
 agc_wdsp_params_t agc_wdsp_conf;
 

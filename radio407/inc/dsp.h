@@ -7,11 +7,14 @@
 
 enum {HALF_LOWER, HALF_UPPER};
 
+
+
 extern volatile bool dspRingHalf;
 extern volatile bool dspProcDone;
 extern volatile int16_t audioRxBuffer[AUDIO_BUFFER_LEN];
 extern volatile int16_t audioTxBuffer[AUDIO_BUFFER_LEN];
 extern int32_t time2;
+extern int32_t dspTotalTime;
 
 extern float Ttest;
 extern float wttest;

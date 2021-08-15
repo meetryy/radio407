@@ -1,5 +1,5 @@
 #include "tools.h"
-#include "usbd_cdc_if.h"
+//#include "usbd_cdc_if.h"
 #include "global.h"
 #include "audio_cfg.h"
 #include "gfx.h"
@@ -42,6 +42,21 @@ void debugClearTerminal(void){
 #endif
 
 
+}
+
+#include "gfx.h"
+
+void debugPrintFast(const char *fmt, ...){
+	va_list args;
+	va_start(args, fmt);
+	int rc = vsnprintf(	gfxItems[G_DEBUG_STRING].text,
+						sizeof(gfxItems[G_DEBUG_STRING].text),
+						fmt,
+						args);
+	va_end(args);
+	char nlBuf[] = {"\r\n"};
+	strcat(gfxItems[G_DEBUG_STRING].text, nlBuf);
+	gfxItems[G_DEBUG_STRING].pendUpd = 1;
 }
 
 
@@ -194,15 +209,3 @@ void debugInit(void){
 	debugPinInit();
 }
 
-uint32_t preciseTimerCounter = 0;
-
-uint32_t preciseTimerValue(){
-	return preciseTimerCounter;
-}
-
-void preciseTimerIncrease(){
-	if (preciseTimerCounter == ((2 << 32) - 1))
-		preciseTimerCounter = 0;
-	else
-		preciseTimerCounter++;
-}

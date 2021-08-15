@@ -5,7 +5,8 @@
 #include "audio_cfg.h"
 #include "local_gen.h"
 #include "tools.h"
-//#include "fir.h"
+#include "gfx.h"
+#include "fft.h"
 
 #include <stdbool.h>
 volatile bool dspRingHalf = HALF_LOWER;
@@ -50,13 +51,13 @@ int32_t dspTotalTime = 0;
 
 UART_HandleTypeDef huart1;
 
+#define	Lch	(0)
+#define Rch	(1)
+
 char txt[64];
 
-volatile float Lbuffer[DSP_BLOCK_SIZE];
-volatile float Rbuffer[DSP_BLOCK_SIZE];
-volatile float FFTbuffer[DSP_BLOCK_SIZE];
-volatile float LbufferOUT[DSP_BLOCK_SIZE];
-volatile float RbufferOUT[DSP_BLOCK_SIZE];
+CCM_RAM_STATIC volatile float INbuffer[2][DSP_BLOCK_SIZE];
+CCM_RAM_STATIC volatile float OUTbuffer[2][DSP_BLOCK_SIZE];
 
 int16_t *ptrToRxArray;
 int16_t *ptrToTxArray;
@@ -68,22 +69,25 @@ void bufferDeserialize(void){
 
 	// L R L R to [LL] [RR]
 	for (int i = 0; i < AUDIO_BUFFER_LEN/2; i++){
-		if (i%2==0) Rbuffer[i/2] = (float)(*(ptrToRxArray+i)) / (float)(1 << DSP_BIT);
-		else 		Lbuffer[i/2] = (float)(*(ptrToRxArray+i)) / (float)(1 << DSP_BIT);
+		if (i%2==0) INbuffer[Lch][i/2] = (float)(*(ptrToRxArray+i)) / (float)(1 << DSP_BIT);
+		else 		INbuffer[Rch][i/2] = (float)(*(ptrToRxArray+i)) / (float)(1 << DSP_BIT);
 	}
 }
+
+bool bypassDSP = 0;
 
 void bufferSerialize(void){
 	// [LL] [RR] to L R L R
 	for (int i = 0; i < AUDIO_BUFFER_HALF; i++){
-		if (i%2!=0)  *(ptrToTxArray+i) =  (int16_t)(LbufferOUT[i/2] * (float)(1 << DSP_BIT));
-		else 		 *(ptrToTxArray+i) =  (int16_t)(RbufferOUT[i/2] * (float)(1 << DSP_BIT));
+		if (i%2!=0)  *(ptrToTxArray+i) =  (int16_t)(OUTbuffer[Lch][i/2] * (float)(1 << DSP_BIT));
+		else 		 *(ptrToTxArray+i) =  (int16_t)(OUTbuffer[Rch][i/2] * (float)(1 << DSP_BIT));
 	}
 
-	for (int i = 0; i < AUDIO_BUFFER_HALF; i++){
-		LbufferOUT[i/2] = Lbuffer[i/2];
-		RbufferOUT[i/2] = Rbuffer[i/2];
-
+	if (bypassDSP){
+		for (int i = 0; i < AUDIO_BUFFER_HALF; i++){
+			OUTbuffer[Lch][i] = INbuffer[Lch][i];
+			OUTbuffer[Rch][i] = INbuffer[Rch][i];
+		}
 	}
 }
 
@@ -135,8 +139,8 @@ void dspProc(void){
 	double WTincrement = 2.0 * M_PI * F * 1.0/(double)AUDIO_FREQ;
 	double WTincrement2 = 2.0 * M_PI * F2 * 1.0/(double)AUDIO_FREQ;
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, dspRingHalf == HALF_LOWER);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, dspRingHalf == HALF_UPPER);
+	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, dspRingHalf == HALF_LOWER);
+	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, dspRingHalf == HALF_UPPER);
 
 	if (!dspProcDone){
 		dspEntries++;
@@ -151,8 +155,8 @@ void dspProc(void){
 		static float LbufferScaled[DSP_BLOCK_SIZE];
 		static float RbufferScaled[DSP_BLOCK_SIZE];
 
-		arm_scale_f32(Lbuffer, LnputGain, LbufferScaled, DSP_BLOCK_SIZE);
-		arm_scale_f32(Rbuffer, RnputGain, RbufferScaled, DSP_BLOCK_SIZE);
+		arm_scale_f32(INbuffer[Lch], LnputGain, LbufferScaled, DSP_BLOCK_SIZE);
+		arm_scale_f32(INbuffer[Rch], RnputGain, RbufferScaled, DSP_BLOCK_SIZE);
 
 
 		// ======= FREQ SHIFT ========
@@ -191,16 +195,10 @@ void dspProc(void){
 		arm_add_f32(mix2OutSin, mix2OutCos, demodResultBuffer, DSP_BLOCK_SIZE);
 
 		for (int i = 0; i < DSP_BLOCK_SIZE; i++){
-				LbufferOUT[i] = demodResultBuffer[i];//*3.0;
-				RbufferOUT[i] = demodResultBuffer[i];//*3.0;
+				OUTbuffer[Lch][i] = demodResultBuffer[i];//*3.0;
+				OUTbuffer[Rch][i] = demodResultBuffer[i];//*3.0;
 		}
 
-		// FFT
-		//for (int i = 0; i < DSP_BLOCK_SIZE; i++){
-		//	FFTbuffer[i] = LbufferOUT[i];
-		//}
-
-		//fftTest(FFTbuffer);
 
 
 		//genGetValue(LbufferOUT, DSP_BLOCK_SIZE, GEN_F0, GEN_SIN);
@@ -213,6 +211,18 @@ void dspProc(void){
 		//	LbufferOUT[i] = 1;
 		//	LbufferOUT[i] = 0;
 		//}
+
+
+		// FFT
+		for (int i = 0; i <FFT_LEN*2; i=i+2){
+			FFTbuffer[i] = INbuffer[Lch][i/2];
+			FFTbuffer[i+1] = 0;
+		}
+		fftTest(FFTbuffer);
+		//gfxItems[G_FFT_BINS].pendUpd = 1;
+
+
+
 
 		bufferSerialize();
 

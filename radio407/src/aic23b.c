@@ -3,8 +3,8 @@
 #include "global.h"
 #include "main.h"
 
-SPI_HandleTypeDef			hspi3;
-#define AIC_SPI_HANDLE		&hspi3
+SPI_HandleTypeDef			hspi1;
+#define AIC_SPI_HANDLE		&hspi1
 
 enum {	AIC_REG_LINEIN_L = 0, AIC_REG_LINEIN_R = 1,
 		AIC_REG_HP_L = 2, AIC_REG_HP_R = 3,
@@ -22,7 +22,7 @@ void AICtx(uint8_t addr, uint16_t data){
 	uint8_t dataToTx[2] = {txData & 0xFF, ((txData >> 8) & 0xFF)};
 
 	HAL_GPIO_WritePin(CODEC_CS_PORT, CODEC_CS_PIN, 0);
-		HAL_SPI_Transmit(&hspi3, (uint8_t*)dataToTx, 1, 10);
+		HAL_SPI_Transmit(AIC_SPI_HANDLE, (uint8_t*)dataToTx, 1, 10);
 	HAL_GPIO_WritePin(CODEC_CS_PORT, CODEC_CS_PIN, 1);
 }
 

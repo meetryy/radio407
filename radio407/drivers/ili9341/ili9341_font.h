@@ -30,16 +30,20 @@ typedef struct
 {
     const uint8_t width;
     const uint8_t height;
-    const uint16_t glyph[];
+    const uint8_t isWide;
+    const uint32_t glyph[];
+
 }
 ili9341_font_t;
+
 
 // ------------------------------------------------------- exported variables --
 
 extern ili9341_font_t const ili9341_font_7x10;
 extern ili9341_font_t const ili9341_font_11x18;
-extern ili9341_font_t const ili9341_font_16x26;
-
+extern ili9341_font_t const ili9341_font_vfo_big;
+extern ili9341_font_t const ili9341_font_vfo_small;
+//extern ili9341_font_t const ili9341_font_16x26;
 // ------------------------------------------------------- exported functions --
 
 uint8_t glyph_index(unsigned char glyph);

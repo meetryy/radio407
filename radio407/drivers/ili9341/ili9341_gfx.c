@@ -9,6 +9,7 @@
 
 #include "ili9341_gfx.h"
 #include "stdlib.h"
+#include "global.h"
 #include "string.h" // memset()
 
 // ---------------------------------------------------------- private defines --
@@ -231,6 +232,7 @@ void ili9341_draw_rect(ili9341_t *lcd, ili9341_color_t color,
   ili9341_draw_line(lcd, color, x+w-1,     y, x+w-1,   y+h );
 }
 
+
 void ili9341_fill_rect(ili9341_t *lcd, ili9341_color_t color,
     int16_t x, int16_t y, uint16_t w, uint16_t h)
 {
@@ -268,6 +270,88 @@ void ili9341_fill_rect(ili9341_t *lcd, ili9341_color_t color,
   }
 
   ili9341_spi_tft_release(lcd);
+}
+
+
+void ili9341_fill_data(ili9341_t *lcd, ili9341_color_t color,
+    int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* data)
+{
+  // verify we have something within screen dimensions to be drawn
+  //if (ibNOT(ili9341_clip_rect(lcd, &x, &y, &w, &h)))
+  //  { return; }
+
+  //uint32_t num_pixels = w * h;
+  uint32_t pixelsLeft    = w * h;	// pixels left to transmit
+
+  uint32_t block_wc = pixelsLeft;
+  if (block_wc > __SPI_TX_BLOCK_MAX__)
+    { block_wc = __SPI_TX_BLOCK_MAX__; }
+
+  // select target region
+  ili9341_spi_tft_set_address_rect(lcd, x, y, (x + w - 1), (y + h - 1));
+  ili9341_spi_tft_select(lcd);
+
+  HAL_GPIO_WritePin(lcd->data_command_port, lcd->data_command_pin, __GPIO_PIN_SET__);
+
+  uint32_t pixelsSent = 0;
+  uint32_t curr_wc;
+  while (pixelsLeft > 0) { 			// pixels left to transmit
+		curr_wc = pixelsLeft;
+		if (curr_wc > block_wc)
+			curr_wc = block_wc;     // transmit whole block
+
+
+	// block_wc == num of uint16_t in block
+	ili9341_transmit_color(lcd, curr_wc * 2, data + pixelsSent, ibYes);
+	pixelsSent += curr_wc;
+	pixelsLeft -= curr_wc;
+  }
+
+  ili9341_spi_tft_release(lcd);
+}
+
+
+void ili9341_fill_data2x(ili9341_t *lcd, ili9341_color_t color,
+    int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* data)
+{
+  // verify we have something within screen dimensions to be drawn
+  if (ibNOT(ili9341_clip_rect(lcd, &x, &y, &w, &h)))
+    { return; }
+
+  uint32_t num_pixels = w * h;
+  uint32_t pixelsLeft    = num_pixels;	// pixels left to transmit
+
+  uint32_t block_wc = pixelsLeft;
+  if (block_wc > __SPI_TX_BLOCK_MAX__)
+    { block_wc = __SPI_TX_BLOCK_MAX__; }
+
+  // select target region
+  ili9341_spi_tft_set_address_rect(lcd, x, y, (x + w - 1), (y + h - 1));
+  ili9341_spi_tft_select(lcd);
+
+  HAL_GPIO_WritePin(lcd->data_command_port, lcd->data_command_pin, __GPIO_PIN_SET__);
+
+  uint32_t pixelsSent = 0;
+  uint32_t curr_wc;
+  while (pixelsLeft > 0) { 			// pixels left to transmit
+		curr_wc = pixelsLeft;
+		if (curr_wc > block_wc)
+			curr_wc = block_wc;     // transmit whole block
+
+
+	// block_wc == num of uint16_t in block
+	ili9341_transmit_color(lcd, curr_wc * 2, data + pixelsSent, ibYes);
+	pixelsSent += curr_wc;
+	pixelsLeft -= curr_wc;
+  }
+
+  ili9341_spi_tft_release(lcd);
+}
+
+
+void ili9341_fill_rect_up(ili9341_t *lcd, ili9341_color_t color, int16_t x, int16_t y, uint16_t w, uint16_t h){
+	y = y-h;
+	ili9341_fill_rect(lcd, color,x, y, w, h);
 }
 
 void ili9341_draw_circle(ili9341_t *lcd, ili9341_color_t color,
@@ -367,6 +451,7 @@ void ili9341_draw_bitmap_1b(ili9341_t *lcd,
   ili9341_transmit_wait(lcd);
 }
 
+
 void ili9341_draw_char(ili9341_t *lcd, ili9341_text_attr_t attr, char ch)
 {
   // verify we have something within screen dimensions to be drawn
@@ -388,12 +473,16 @@ void ili9341_draw_char(ili9341_t *lcd, ili9341_text_attr_t attr, char ch)
   if (block_wc > __SPI_TX_BLOCK_MAX__)
     { block_wc = __SPI_TX_BLOCK_MAX__; }
 
+
+  uint32_t valToCompare = 0x8000;
+  if (attr.font -> isWide) valToCompare = 0x80000000;
+
   // initialize the buffer with glyph from selected font
   uint8_t ch_index = glyph_index(ch);
   for (uint32_t yi = 0; yi < attr.font->height; ++yi) {
-    uint32_t gl = (uint32_t)attr.font->glyph[ch_index * attr.font->height + yi];
+    uint32_t gl = (uint32_t)attr.font->glyph[(ch_index) * attr.font->height + yi];
     for (uint32_t xi = 0; xi < attr.font->width; ++xi) {
-      if ((gl << xi) & 0x8000)
+      if ((gl << xi) & valToCompare)
         { spi_tx_block[yi * attr.font->width + xi] = fg_le; }
       else
         { spi_tx_block[yi * attr.font->width + xi] = bg_le; }
@@ -422,6 +511,149 @@ void ili9341_draw_char(ili9341_t *lcd, ili9341_text_attr_t attr, char ch)
   ili9341_spi_tft_release(lcd);
 }
 
+
+void ili9341_draw_char_big(ili9341_t *lcd, ili9341_text_attr_t attr, char ch)
+{
+  // verify we have something within screen dimensions to be drawn
+  int16_t  _x = attr.origin_x;
+  int16_t  _y = attr.origin_y;
+  uint16_t _w = attr.font->width;
+  uint16_t _h = attr.font->height;
+  if (ibNOT(ili9341_clip_rect(lcd, &_x, &_y, &_w, &_h)))
+    { return; }
+
+  // 16-bit color, so need 2 bytes for each pixel being filled
+  uint32_t num_pixels = attr.font->width * attr.font->height;
+  uint32_t rect_wc    = num_pixels;
+
+  uint16_t fg_le = __LEu16(&(attr.fg_color));
+  uint16_t bg_le = __LEu16(&(attr.bg_color));
+
+  uint32_t block_wc = rect_wc;
+  if (block_wc > __SPI_TX_BLOCK_MAX__)
+    { block_wc = __SPI_TX_BLOCK_MAX__; }
+
+  // initialize the buffer with glyph from selected font
+  uint8_t ch_index = glyph_index(ch);
+  for (uint32_t yi = 0; yi < attr.font->height; ++yi) {
+    uint32_t gl = (uint32_t)attr.font->glyph[(ch_index) * attr.font->height + yi];
+    for (uint32_t xi = 0; xi < attr.font->width; ++xi) {
+      if ((gl << xi) & 0x80000000)
+        { spi_tx_block[yi * attr.font->width + xi] = fg_le; }
+      else
+        { spi_tx_block[yi * attr.font->width + xi] = bg_le; }
+    }
+  }
+
+  // select target region
+  ili9341_spi_tft_set_address_rect(lcd,
+      attr.origin_x, attr.origin_y,
+      attr.origin_x + attr.font->width - 1, attr.origin_y + attr.font->height - 1);
+  ili9341_spi_tft_select(lcd);
+
+  HAL_GPIO_WritePin(lcd->data_command_port, lcd->data_command_pin, __GPIO_PIN_SET__);
+
+  // repeatedly send MIN(remaining-words, block-words) words of color data until
+  // all rect words have been sent.
+  uint32_t curr_wc;
+  while (rect_wc > 0) {
+    curr_wc = rect_wc;
+    if (curr_wc > block_wc)
+      { curr_wc = block_wc; }
+    ili9341_transmit_color(lcd, curr_wc * 2/*16-bit words*/, spi_tx_block, ibYes);
+    rect_wc -= curr_wc;
+  }
+
+  ili9341_spi_tft_release(lcd);
+}
+
+void ili9341_draw_char_2x(ili9341_t *lcd, ili9341_text_attr_t attr, char ch)
+{
+  // verify we have something within screen dimensions to be drawn
+  int16_t  _x = attr.origin_x;
+  int16_t  _y = attr.origin_y;
+  uint16_t _w = attr.font->width * 2;
+  uint16_t _h = attr.font->height * 2;
+  if (ibNOT(ili9341_clip_rect(lcd, &_x, &_y, &_w, &_h)))
+    { return; }
+
+  // 16-bit color, so need 2 bytes for each pixel being filled
+  uint32_t num_pixels = attr.font->width * attr.font->height * 4;
+  uint32_t rect_wc    = num_pixels;
+
+  uint16_t fg_le = __LEu16(&(attr.fg_color));
+  uint16_t bg_le = __LEu16(&(attr.bg_color));
+
+  uint32_t block_wc = rect_wc;
+  if (block_wc > __SPI_TX_BLOCK_MAX__)
+    { block_wc = __SPI_TX_BLOCK_MAX__; }
+
+  // initialize the buffer with glyph from selected font
+  uint8_t ch_index = glyph_index(ch);
+
+  for (uint32_t yi = 0; yi < attr.font->height; yi++) {
+    uint32_t gl = (uint32_t)attr.font->glyph[ch_index * attr.font->height + yi];
+
+    for (uint32_t xi = 0; xi < attr.font->width; xi++) {
+
+    	uint16_t col;
+    	if ((gl << xi) & 0x8000) 	col = fg_le;
+    	else 						col = bg_le;
+
+		int bufX = xi*2;
+		int bufY = yi*2;
+
+		spi_tx_block[bufY *     attr.font->width*2 + 	bufX	] 	= col;
+		spi_tx_block[bufY *	  	attr.font->width*2 + 	bufX + 1] 	= col;
+		spi_tx_block[(bufY+1) * attr.font->width*2 + 	bufX	] 	= col;
+		spi_tx_block[(bufY+1) * attr.font->width*2 + 	bufX + 1] 	= col;
+
+    }
+
+  }
+
+  // select target region
+  ili9341_spi_tft_set_address_rect(lcd,
+      attr.origin_x, attr.origin_y,
+      attr.origin_x + attr.font->width*2 - 1, attr.origin_y + attr.font->height*2 - 1);
+  ili9341_spi_tft_select(lcd);
+
+  HAL_GPIO_WritePin(lcd->data_command_port, lcd->data_command_pin, __GPIO_PIN_SET__);
+
+  // repeatedly send MIN(remaining-words, block-words) words of color data until
+  // all rect words have been sent.
+  uint32_t curr_wc;
+  while (rect_wc > 0) {
+    curr_wc = rect_wc;
+    if (curr_wc > block_wc)
+      { curr_wc = block_wc; }
+    ili9341_transmit_color(lcd, curr_wc * 2/*16-bit words*/, spi_tx_block, ibYes);
+    rect_wc -= curr_wc;
+  }
+
+  ili9341_spi_tft_release(lcd);
+}
+
+void ili9341_draw_string_2x(ili9341_t *lcd, ili9341_text_attr_t attr, char str[])
+{
+  int16_t curr_x = attr.origin_x * 2;
+  int16_t curr_y = attr.origin_y * 2;
+
+  while ('\0' != *str) {
+    if ( (curr_x > lcd->screen_size.width) ||
+         (curr_y > lcd->screen_size.height) )
+      { break; }
+
+    attr.origin_x = curr_x;
+    attr.origin_y = curr_y;
+
+    ili9341_draw_char(lcd, attr, *str);
+
+    curr_x += attr.font->width * 2;
+    ++str;
+  }
+}
+
 void ili9341_draw_string(ili9341_t *lcd, ili9341_text_attr_t attr, char str[])
 {
   int16_t curr_x = attr.origin_x;
@@ -441,6 +673,7 @@ void ili9341_draw_string(ili9341_t *lcd, ili9341_text_attr_t attr, char str[])
     ++str;
   }
 }
+
 
 // ------------------------------------------------------- private functions --
 

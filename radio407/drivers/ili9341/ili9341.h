@@ -33,7 +33,7 @@ extern "C" {
 #define __GPIO_PIN_SET__     GPIO_PIN_SET
 
 #define __SPI_MAX_DELAY__    HAL_MAX_DELAY
-#define __SPI_TX_BLOCK_MAX__ (1U * 1024U) // 1024 16-bit words (2 KiB)
+#define __SPI_TX_BLOCK_MAX__ (1U * 2048U) // 1024 16-bit words (2 KiB)
 
 // ------------------------------------------------------------------- macros --
 
@@ -261,6 +261,7 @@ void ili9341_spi_write_data_read(ili9341_t *lcd,
     uint16_t data_sz, uint8_t tx_data[], uint8_t rx_data[]);
 void ili9341_spi_write_command_data(ili9341_t *lcd,
     ili9341_spi_slave_t spi_slave, uint8_t command, uint16_t data_sz, uint8_t data[]);
+
 
 #ifdef __cplusplus
 }

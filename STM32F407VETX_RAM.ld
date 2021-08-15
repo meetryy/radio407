@@ -167,6 +167,13 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
+   
+   .ccmram : {
+    . = ALIGN(4);
+    *(.ccmram*)
+	} > CCMRAM
+  
+
   /* Remove information from the compiler libraries */
   /DISCARD/ :
   {

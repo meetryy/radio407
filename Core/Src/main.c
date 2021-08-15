@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -50,12 +49,14 @@ DMA_HandleTypeDef hdma_spi2_tx;
 
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi3;
-DMA_HandleTypeDef hdma_spi1_tx;
+DMA_HandleTypeDef hdma_spi3_tx;
 
 TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
+
+PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
 
@@ -71,6 +72,7 @@ static void MX_SPI3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_USB_OTG_FS_PCD_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -78,7 +80,7 @@ static void MX_ADC1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-#include "usbd_cdc_if.h"
+//#include "usbd_cdc_if.h"
 
 #include "global.h"
 #include "tools.h"
@@ -90,7 +92,10 @@ static void MX_ADC1_Init(void);
 #include "adc.h"
 #include "buttons.h"
 #include "encoder.h"
-
+#include "cw.h"
+#include "fft.h"
+#include "soft_sched.h"
+#include "soft_timer.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -141,31 +146,33 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_USB_DEVICE_Init();
   MX_SPI1_Init();
   MX_I2S2_Init();
   MX_SPI3_Init();
   MX_USART1_UART_Init();
   MX_TIM7_Init();
   MX_ADC1_Init();
+  MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
 
-	HAL_Delay(100);
+	HAL_Delay(500);
 	debugInit();
 	initHardware();
 	dspInit();
 	firInit();
 	fftInit();
-
-	debugPrint("init done");
-
+	cwInit();
+	debugPrintFast("init done");
+	HAL_Delay(100);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, 1);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 0);
 
 	HAL_TIM_Base_Start_IT(&htim7);
 	adcStart();
 	dspStartAudio();
+	extIntSet(1);
 
+	//HAL_Delay(100);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -178,45 +185,109 @@ float testFloat = 1.0f;
 
 	gfxItemsInit();
 	uint32_t nextTime = 0;
-  while (1)
-  {
+	/*
+	for (int i=0; i<FFT_USEFUL_BINS; i++){
+		for (int j=0; j<FFT_WF_LEN;j++){
+			fftWFdata[j][i] = rand()%256;
+		}
+	}*/
+
+
+	HAL_Delay(100);
+
+	bool dspRingOld = !dspRingHalf;
+	softTasks[TASK_GFX_ALL].isEnabled= 0;
+
+	while (1)
+	{
+
+		dspProc();
+/*
+		if (dspRingHalf != dspRingOld){
+			//gfxUpdateQueue();
+			softTasks[TASK_GFX_ALL].executeNow = 1;
+			dspRingOld = dspRingHalf;
+		}
+*/
+
+		processSoftTasksSync();
+		 processSoftTasksAsync();
+
+
 
 	  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6);
 	  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_7);
 	 // debugPrint("%u | %u", testInt[0],testInt[1] );
 	  //HAL_Delay(5);
-	  dspProc();
 
+/*
 	  uint32_t timeAllStart = preciseTimerValue();
 
 	  uint32_t timeNow = preciseTimerValue();
 	  if (timeNow >= nextTime){
 		  testFloat+=1.5f;
+
 		  //int val = (preciseTimerValue()  >> 12) & 0x01;
 		  //LCDdrawIndicator(val);
-		  gfxBarSet(G_BAR_AUDIOLOAD, getAudioLoadPossible());
-		  gfxBarSet(G_BAR_ELSELOAD, everythingElseLoad);
 
-		  btnUpdateFromADC();
+
 		  //debugPrint("%.1f%%|%.1f%%", getAudioLoadPossible(), everythingElseLoad);
 		  //adcSmoothen();
 		  //debugPrint("%i", adcCh[ADC_BUTTONS].ADCsmooth);
 
-		  debugPrint("%i %i", encoder[ENC_LOWER].delta, encoder[ENC_UPPER].delta);
 
-		  gfxItemsRedraw();
-	  nextTime = preciseTimerValue() + 1000; // every 100ms
+		  //debugPrint("%.2f @ %u Hz", maxValue, (maxIndex*(AUDIO_FREQ/FFT_LEN/2)));
+
+
+		  //LCDtestDraw();
+
+		  static bool wfLater;
+		  if (wfLater){
+		  		  gfxItems[G_FFT_BINS].pendUpd = 0;
+		  		  gfxItems[G_FFT_WF].pendUpd = 1;
+		  	  }
+		  	  else{
+		  		  gfxItems[G_FFT_BINS].pendUpd = 1;
+		  		  gfxItems[G_FFT_WF].pendUpd = 0;
+		  	  }
+		  	  wfLater = !wfLater;
+
+
+
+		  //fftWaterfallShift();
+
+	  nextTime = preciseTimerValue() + SOFT_MS(500); // every 50ms
 	  }
+
+	  //gfxItemsRedraw();
+
+/*
+	  static bool wfLater;
+	  if (wfLater) {
+		  gfxItems[G_FFT_BINS].pendUpd = 0;
+		  gfxItems[G_FFT_WF].pendUpd = 1;
+		  wfLater = 0;
+	  } else if ((gfxItems[G_FFT_BINS].pendUpd) && (gfxItems[G_FFT_WF].pendUpd)){
+			  gfxItems[G_FFT_BINS].pendUpd = 1;
+			  gfxItems[G_FFT_WF].pendUpd = 0;
+			  wfLater = 1;
+		  }
+	  }
+
+
+
+
+
 
 	  //HAL_Delay(3);
 
-
+	  //fftWaterfallShift
 
 	  uint32_t timeAllNow = preciseTimerValue() - timeAllStart;
 	  float everythingMs = ((float)timeAllNow/10.0);
 	  float allBufMs = (AUDIO_BUFFER_MS/2.0f);
 	  everythingElseLoad = everythingMs/allBufMs*100.0f;
-
+*/
 
 	  //debugPrint("%.2f %.2f %.2f %.2f %.2f", mags[0],mags[1],mags[2],mags[3],mags[4]);
 
@@ -235,7 +306,6 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
   */
@@ -266,13 +336,6 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV4;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-  PeriphClkInitStruct.PLLI2S.PLLI2SN = 184;
-  PeriphClkInitStruct.PLLI2S.PLLI2SR = 3;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
@@ -401,7 +464,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -435,11 +498,11 @@ static void MX_SPI3_Init(void)
   hspi3.Instance = SPI3;
   hspi3.Init.Mode = SPI_MODE_MASTER;
   hspi3.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi3.Init.DataSize = SPI_DATASIZE_16BIT;
+  hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi3.Init.NSS = SPI_NSS_SOFT;
-  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -526,6 +589,41 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief USB_OTG_FS Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USB_OTG_FS_PCD_Init(void)
+{
+
+  /* USER CODE BEGIN USB_OTG_FS_Init 0 */
+
+  /* USER CODE END USB_OTG_FS_Init 0 */
+
+  /* USER CODE BEGIN USB_OTG_FS_Init 1 */
+
+  /* USER CODE END USB_OTG_FS_Init 1 */
+  hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
+  hpcd_USB_OTG_FS.Init.dev_endpoints = 4;
+  hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
+  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
+  hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
+  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USB_OTG_FS_Init 2 */
+
+  /* USER CODE END USB_OTG_FS_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -542,12 +640,12 @@ static void MX_DMA_Init(void)
   /* DMA1_Stream4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream4_IRQn);
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-  /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
@@ -577,7 +675,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, LED1_Pin|LED2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CODEC_CS_GPIO_Port, CODEC_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, FLASH_CS_Pin|CODEC_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LCD_DC_Pin|LCD_RST_Pin|LCD_CS_Pin, GPIO_PIN_RESET);
@@ -602,8 +700,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ENC1A_Pin ENC1B_Pin ENC2A_Pin ENC2B_Pin */
-  GPIO_InitStruct.Pin = ENC1A_Pin|ENC1B_Pin|ENC2A_Pin|ENC2B_Pin;
+  /*Configure GPIO pin : FLASH_CS_Pin */
+  GPIO_InitStruct.Pin = FLASH_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(FLASH_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : KEY_PTT_Pin KEY_PADDLE_L_Pin KEY_PADDLE_R_Pin ENC1A_Pin
+                           ENC1B_Pin ENC2A_Pin ENC2B_Pin */
+  GPIO_InitStruct.Pin = KEY_PTT_Pin|KEY_PADDLE_L_Pin|KEY_PADDLE_R_Pin|ENC1A_Pin
+                          |ENC1B_Pin|ENC2A_Pin|ENC2B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
@@ -630,6 +737,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(LCD_RST_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 

@@ -45,6 +45,20 @@ MEMORY
 /* Sections */
 SECTIONS
 {
+
+    /* executable code*/
+	 /* constant data*/
+	  /* static data*/
+	  
+   .ccmram  : {
+    /*. = ALIGN(4);*/
+	*(.ccmram) 
+	*(.ccmram*)             
+    *(.ccmram_constant)       
+    *(.ccmram_static)          
+	} > CCMRAM
+  
+  
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :
   {

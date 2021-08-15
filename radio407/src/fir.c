@@ -6,28 +6,12 @@
 #include "audio_cfg.h"
 //#include "math_helper.h"
 
+CCM_RAM_STATIC
 static float32_t firState1[AUDIO_BUFFER_LEN/2 + NUM_TAPS - 1];
+CCM_RAM_STATIC
 static float32_t firState2[AUDIO_BUFFER_LEN/2 + NUM_TAPS - 1];
 arm_fir_instance_f32 S1;
 arm_fir_instance_f32 S2;
-
-arm_cfft_instance_f32 fftS;
-
-
-void fftInit(void) {
-	arm_cfft_radix4_init_f32(&fftS, FFT_LEN, 0, 0);
-}
-
-float mags[FFT_LEN] = {0};
-
-int maxIndex = 0;
-float maxValue = 0;
-
-void fftTest(float *inputF32) {
-	arm_cfft_radix4_f32(&fftS, inputF32);
-	arm_cmplx_mag_f32(inputF32, mags, FFT_LEN);
-	//arm_max_f32(mags, FFT_LEN, &maxValue, &maxIndex);
-}
 
 void firInit(void) {
   arm_fir_init_f32(&S1, NUM_TAPS, firCoeffs32, firState1, AUDIO_BUFFER_LEN/2);
@@ -134,8 +118,7 @@ void firFloat( double *coeffs, double *input, double *output,
 
 */
 
-
-const float firCoeffs32[NUM_TAPS] = {
+const float firCoeffs32[NUM_TAPS]= {
 		   -0.00653603984882394470,
 		        -0.01027017922497046100,
 		        -0.01384196957956241500,
@@ -233,5 +216,4 @@ const float firCoeffs32[NUM_TAPS] = {
 		        -0.00653603984882394470,
 		        -0.00321978326912657950
 };
-
 

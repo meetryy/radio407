@@ -31,17 +31,38 @@ static const int8_t graydecoder [4][4] =
 
 encoder_t encoder[ENC_NR] = {
 		[ENC_UPPER].isReversed = 0,
-		[ENC_UPPER].pins[0] = GPIO_PIN_10,
-		[ENC_UPPER].pins[1] = GPIO_PIN_11,
-		[ENC_UPPER].port = GPIOE,
+		[ENC_UPPER].pins[0] = ENC1A_PIN,
+		[ENC_UPPER].pins[1] = ENC1B_PIN,
+		[ENC_UPPER].port = ENC1_PORT,
 		[ENC_UPPER].divider = 2,
 
 		[ENC_LOWER].isReversed = 0,
-		[ENC_LOWER].pins[0] = GPIO_PIN_12,
-		[ENC_LOWER].pins[1] = GPIO_PIN_13,
-		[ENC_LOWER].port = GPIOE,
-		[ENC_UPPER].divider = 2,
+		[ENC_LOWER].pins[0] = ENC2A_PIN,
+		[ENC_LOWER].pins[1] = ENC2B_PIN,
+		[ENC_LOWER].port = ENC2_PORT,
+		[ENC_LOWER].divider = 2,
 };
+
+void encInputCallback(uint16_t GPIO_Pin){
+	int encIndex = 0;
+	for (int i=0; i<ENC_NR; i++){
+		if ((GPIO_Pin == encoder[i].pins[0])||(GPIO_Pin == encoder[i].pins[1])) encIndex = i;
+	}
+
+	encoder_t* e;
+		///for (int i=0; i<ENC_NR; i++){
+			e = &encoder[encIndex];
+			bool a = HAL_GPIO_ReadPin(e->port, e->pins[0]);
+			bool b = HAL_GPIO_ReadPin(e->port, e->pins[1]);
+
+			e->phaseState = (b << 1) | (a);
+			if (e->isReversed) 	e->deltaRaw -= graydecoder[e->phaseOldState][e->phaseState];
+			else 				e->deltaRaw += graydecoder[e->phaseOldState][e->phaseState];
+			e->delta = e->deltaRaw / (1 << e->divider);
+			e->phaseOldState = e->phaseState;
+		//}
+}
+
 
 
 void encInputRoutine(void){
@@ -57,7 +78,7 @@ void encInputRoutine(void){
 		e->phaseState = (a << 1) | (b);
 		if (e->isReversed) 	e->deltaRaw -= graydecoder[e->phaseOldState][e->phaseState];
 		else 				e->deltaRaw += graydecoder[e->phaseOldState][e->phaseState];
-		e->delta = e->deltaRaw / e->divider;
+		e->delta = e->deltaRaw / (1 << e->divider);
 		e->phaseOldState = e->phaseState;
 	}
 }

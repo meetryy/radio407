@@ -8,12 +8,45 @@ int Y;
 } Point_t;
 
 enum gfxItemList {
+	G_BAR_ELSELOAD,
 	G_DEBUG_STRING,
 	G_TEST_FLOAT,
-	G_VFO_VAL,
+
 	G_BAR,
 	G_BAR_AUDIOLOAD,
-	G_BAR_ELSELOAD,
+	G_VFO_VAL_KHZ,
+	G_VFO_VAL_HZ,
+
+	// upper panel
+	G_UPPER_MODE,
+	G_UPPER_FILTER,
+	G_UPPER_VOLTAGE,
+	G_UPPER_TIME,
+
+
+	// lower panel
+	G_LOWER_LABEL1,
+	G_LOWER_LABEL2,
+	G_LOWER_LABEL3,
+
+
+	// right panel
+	G_RIGHT_LABEL1,
+	G_RIGHT_LABEL2,
+	G_RIGHT_LABEL3,
+	G_RIGHT_LABEL4,
+	G_RIGHT_LABEL5,
+	G_RIGHT_LABEL6,
+
+
+	G_LABEL_RXTX,
+	G_LABEL_VFO,
+
+	G_LABEL_SMETER,
+
+	G_SMETER,
+
+
 	GFX_ITEM_NR
 };
 
@@ -62,15 +95,18 @@ char		text[GFX_ITEM_TEXT_LEN];
 int 		flags;
 } gfxItemCommon_t;
 
-
 extern gfxItemCommon_t gfxItems[GFX_ITEM_NR];
 
 void gfxItemsInit(void);
 void gfxItemsRedraw(void);
 void gfxLabelSet(int itemID, const char *fmt, ...);
 void gfxBarSet(int itemID, float value);
+void gfxDbgDataUpd(void);
 
 Point_t Point(int X, int Y);
+void scrollWF(void);
+void gfxWFredraw();
+void gfxFFTredraw(void);
 
 #define COLOR_BLACK         0x0000
 #define COLOR_NAVY          0x000F
@@ -91,5 +127,4 @@ Point_t Point(int X, int Y);
 #define COLOR_ORANGE        0xFD20
 #define COLOR_GREENYELLOW   0xAFE5
 #define COLOR_PINK        	0xF81F
-
 

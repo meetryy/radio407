@@ -2,7 +2,7 @@
 
 
 ili9341_font_t const ili9341_font_vfo_small = {
-  .width  = 27,
+  .width  = 24,
   .height = 44,
   .isWide = 1,
   .glyph  = {

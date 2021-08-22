@@ -3,10 +3,34 @@
 #include "adc.h"
 
 ButtonStruct_t Button[BUTTON_NR] = {
-		[B_ENC1].HasLongPress = 1,
-		[B_ENC1].Locked = 0,
-		[B_ENC1].funcPtrLong = btnTest1,
-		[B_ENC1].funcPtrShort = btnTest2,
+		[B_RIGHT].HasLongPress = 1,
+		[B_RIGHT].Locked = 0,
+		[B_RIGHT].funcPtrLong = btnTest1,
+		[B_RIGHT].funcPtrShort = btnTest1,
+
+		[B_ENC1].funcPtrLong = NULL,
+		[B_ENC1].funcPtrShort = NULL,
+
+		[B_MID].funcPtrLong = NULL,
+		[B_MID].funcPtrShort = NULL,
+
+		[B_LEFT].HasLongPress = 1,
+		[B_LEFT].Locked = 0,
+		[B_LEFT].funcPtrLong = btnTest1,
+		[B_LEFT].funcPtrShort = btnTest1,
+
+		[B_UPPER_RIGHT].funcPtrLong = NULL,
+		[B_UPPER_RIGHT].funcPtrShort = NULL,
+
+		[B_UPPER_LEFT].funcPtrLong = NULL,
+		[B_UPPER_LEFT].funcPtrShort = NULL,
+
+		[B_ENC2].funcPtrLong = NULL,
+		[B_ENC2].funcPtrShort = NULL,
+
+
+
+
 };
 const uint16_t btnADCvalues[BUTTON_NR] = {0, 30, 120, 300, 645, 1245, 2390};
 uint8_t	btnADCdelta = 20;
@@ -55,7 +79,7 @@ void btnScan (void) {
 					b->waitForRelease = 1;
 					b->OldState = b->State;
 					// call long press function
-					b->funcPtrLong();
+					if (b->funcPtrLong != NULL) b->funcPtrLong();
 					b->ProcessingPending = RELEASED;
 					b->test1++;
 					break;
@@ -74,7 +98,7 @@ void btnScan (void) {
 					if ((b->EndTimer - b->StartTimer) < LONGPRESS_MS){
 						b->ProcessingPending = PRESSED;
 						// call short press function
-						b->funcPtrShort();
+						if (b->funcPtrShort != NULL) b->funcPtrShort();
 						b->ProcessingPending = RELEASED;
 						b->test2++;
 					}

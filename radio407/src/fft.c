@@ -5,14 +5,14 @@
 #include <stdint.h>
 
 arm_cfft_instance_f32 fftS;
-arm_rfft_fast_instance_f32 fftR;
+//arm_rfft_fast_instance_f32 fftR;
 
 // out = fft_len
 // input = fft_len*2
 
 void fftInit(void) {
 	arm_cfft_radix4_init_f32(&fftS, FFT_LEN, 0, 1);
-	arm_rfft_fast_init_f32(&fftR, FFT_LEN);
+	//arm_rfft_fast_init_f32(&fftR, FFT_LEN);
 }
 
 
@@ -49,12 +49,12 @@ void fftTest(float *inputF32) {
 	//}
 
 
-	float magF[FFT_LEN];
+	//float magF[FFT_LEN];
 	for (int i=0; i<FFT_LEN; i++){
 		fftMagnitudes[i] = (int)(scaled[i]);
 		fftMagnitudesdB[i] = 20*log10f(fftMagnitudes[i]);
 
-		magF[i] = (float)fftMagnitudesdB[i];
+		//magF[i] = (float)fftMagnitudesdB[i];
 	}
 
 	arm_max_f32(fftMagnitudesdB, FFT_LEN, &maxValue, &maxIndex);

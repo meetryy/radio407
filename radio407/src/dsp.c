@@ -74,21 +74,24 @@ void bufferDeserialize(void){
 	}
 }
 
-bool bypassDSP = 0;
+bool bypassDSP = 1;
 
 void bufferSerialize(void){
 	// [LL] [RR] to L R L R
+
+	if (bypassDSP){
+			for (long i = 0; i < AUDIO_BUFFER_HALF; i++){
+				OUTbuffer[Lch][i] = INbuffer[Lch][i];
+				OUTbuffer[Rch][i] = INbuffer[Rch][i];
+			}
+		}
+
 	for (int i = 0; i < AUDIO_BUFFER_HALF; i++){
 		if (i%2!=0)  *(ptrToTxArray+i) =  (int16_t)(OUTbuffer[Lch][i/2] * (float)(1 << DSP_BIT));
 		else 		 *(ptrToTxArray+i) =  (int16_t)(OUTbuffer[Rch][i/2] * (float)(1 << DSP_BIT));
 	}
 
-	if (bypassDSP){
-		for (int i = 0; i < AUDIO_BUFFER_HALF; i++){
-			OUTbuffer[Lch][i] = INbuffer[Lch][i];
-			OUTbuffer[Rch][i] = INbuffer[Rch][i];
-		}
-	}
+
 }
 
 
@@ -128,6 +131,8 @@ static void FreqShift_QuarterFs(float32_t* I_buffer, float32_t* Q_buffer, int16_
 
 float inputGain = 1.0f;
 uint32_t dspEntries = 0;
+int dspCallbackCounter = 0;
+int dspOverrunCounter = 0;
 
 void dspProc(void){
 	//HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_7);
@@ -144,7 +149,7 @@ void dspProc(void){
 
 	if (!dspProcDone){
 		dspEntries++;
-
+		int dspCurrCallbackCounter = dspCallbackCounter;
 		dspStartTime = preciseTimerValue();
 
 		bufferDeserialize();
@@ -152,16 +157,16 @@ void dspProc(void){
 		// ======= SCALING ========
 		float LnputGain = 5.0f;
 		float RnputGain = 5.0f;
-		static float LbufferScaled[DSP_BLOCK_SIZE];
-		static float RbufferScaled[DSP_BLOCK_SIZE];
+	 float LbufferScaled[DSP_BLOCK_SIZE];
+		 float RbufferScaled[DSP_BLOCK_SIZE];
 
 		arm_scale_f32(INbuffer[Lch], LnputGain, LbufferScaled, DSP_BLOCK_SIZE);
 		arm_scale_f32(INbuffer[Rch], RnputGain, RbufferScaled, DSP_BLOCK_SIZE);
 
 
 		// ======= FREQ SHIFT ========
-		static float Lshifted[DSP_BLOCK_SIZE];
-		static float Rshifted[DSP_BLOCK_SIZE];
+		 float Lshifted[DSP_BLOCK_SIZE];
+		 float Rshifted[DSP_BLOCK_SIZE];
 
 		//stageInL = LbufferScaled;
 		//stageInR = RbufferScaled;
@@ -173,16 +178,15 @@ void dspProc(void){
 		arm_copy_f32(RbufferScaled, Rshifted, DSP_BLOCK_SIZE);
 
 		// ======= FIR FILTER ========
-		static volatile float Lfiltered[DSP_BLOCK_SIZE];
-		static volatile float Rfiltered[DSP_BLOCK_SIZE];
+		 volatile float Lfiltered[DSP_BLOCK_SIZE];
+		 volatile float Rfiltered[DSP_BLOCK_SIZE];
 		firTest(Lshifted, Lfiltered, DSP_BLOCK_SIZE, 0);
 		firTest(Rshifted, Rfiltered, DSP_BLOCK_SIZE, 1);
 
 		// ======= LOCAL OSC ========
 		float sinArr[DSP_BLOCK_SIZE];
 		float cosArr[DSP_BLOCK_SIZE];
-		genGetValue(sinArr, DSP_BLOCK_SIZE, GEN_F0, GEN_SIN);
-		genGetValue(cosArr, DSP_BLOCK_SIZE, GEN_F1, GEN_COS);
+		genGetValueSinCos(sinArr, cosArr, DSP_BLOCK_SIZE, GEN_SIN);
 
 		// ======= MIXER ========
 		float mix2OutSin[DSP_BLOCK_SIZE];
@@ -195,22 +199,9 @@ void dspProc(void){
 		arm_add_f32(mix2OutSin, mix2OutCos, demodResultBuffer, DSP_BLOCK_SIZE);
 
 		for (int i = 0; i < DSP_BLOCK_SIZE; i++){
-				OUTbuffer[Lch][i] = demodResultBuffer[i];//*3.0;
-				OUTbuffer[Rch][i] = demodResultBuffer[i];//*3.0;
+				OUTbuffer[Lch][i] = demodResultBuffer[i];
+				OUTbuffer[Rch][i] = demodResultBuffer[i];
 		}
-
-
-
-		//genGetValue(LbufferOUT, DSP_BLOCK_SIZE, GEN_F0, GEN_SIN);
-		//genGetValue(RbufferOUT, DSP_BLOCK_SIZE, GEN_F1, GEN_COS);
-
-		//debugPrint("%f", LbufferOUT[0]);
-
-
-		//for (int i = 0; i < DSP_BLOCK_SIZE; i++){
-		//	LbufferOUT[i] = 1;
-		//	LbufferOUT[i] = 0;
-		//}
 
 
 		// FFT
@@ -219,13 +210,11 @@ void dspProc(void){
 			FFTbuffer[i+1] = 0;
 		}
 		fftTest(FFTbuffer);
-		//gfxItems[G_FFT_BINS].pendUpd = 1;
-
-
-
 
 		bufferSerialize();
 
+		if (dspCurrCallbackCounter != dspCallbackCounter) dspOverrunCounter++;
+		dspCurrCallbackCounter = 0;
 		dspTotalTime = preciseTimerValue() - dspStartTime;
 		dspProcDone = 1;
 	}
@@ -248,10 +237,12 @@ float getAudioLoadPossible(void){
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
 	  dspRingHalf = HALF_LOWER;
+	  dspCallbackCounter++;
 	  dspProcDone = 0;
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 	  dspRingHalf = HALF_UPPER;
+	  dspCallbackCounter++;
 	  dspProcDone = 0;
 }

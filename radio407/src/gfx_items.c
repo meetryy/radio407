@@ -46,7 +46,7 @@ gfxItemCommon_t gfxItems[GFX_ITEM_NR] = {
 	[G_BAR_ELSELOAD].max = 100.0f,
 
 	[G_VFO_VAL_KHZ].type = G_TYPE_LABEL,
-	[G_VFO_VAL_KHZ].pos.X = 0,
+	[G_VFO_VAL_KHZ].pos.X = 30,
 	[G_VFO_VAL_KHZ].pos.Y = UI_PANEL_UP_H + 5,
 	[G_VFO_VAL_KHZ].size.X = 2,
 	[G_VFO_VAL_KHZ].isShown = 1,
@@ -56,7 +56,7 @@ gfxItemCommon_t gfxItems[GFX_ITEM_NR] = {
 	[G_VFO_VAL_KHZ].screen = G_SCREEN_MAIN,
 
 	[G_VFO_VAL_HZ].type = G_TYPE_LABEL,
-	[G_VFO_VAL_HZ].pos.X = 6 * 28+2,
+	[G_VFO_VAL_HZ].pos.X = 5 * 28+2 + 30,
 	[G_VFO_VAL_HZ].pos.Y = UI_PANEL_UP_H + 5 + 7,
 	[G_VFO_VAL_HZ].size.X = 3,
 	[G_VFO_VAL_HZ].isShown = 1,

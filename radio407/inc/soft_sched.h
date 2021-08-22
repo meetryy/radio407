@@ -26,6 +26,7 @@ typedef struct{
 extern uint16_t tix[SYNC_TASK_NR];
 
 extern softTask_t softTasks[TASK_NR];
+extern gfxUpdates; //debug
 
 void processSoftTasksAsync(void);
 void processSoftTasksSync(void);

@@ -11,17 +11,17 @@
 
 softTask_t softTasks[TASK_NR]= {
 		[TASK_DBGUPD].isEnabled = 1,
-		[TASK_DBGUPD].periodMs = 200,
+		[TASK_DBGUPD].periodMs = 100,
 		[TASK_DBGUPD].funcPtr = gfxDbgDataUpd,
 		[TASK_DBGUPD].executeNow = 0,
 
 		[TASK_ADC].isEnabled = 1,
-		[TASK_ADC].periodMs = 100,
+		[TASK_ADC].periodMs = 50,
 		[TASK_ADC].funcPtr = btnUpdateFromADC,
 		[TASK_ADC].executeNow = 0,
 
 		[TASK_WF_SCROLL].isEnabled = 1,
-		[TASK_WF_SCROLL].periodMs = 150,
+		[TASK_WF_SCROLL].periodMs = 100,
 		[TASK_WF_SCROLL].funcPtr = scrollWF,
 		[TASK_WF_SCROLL].executeNow = 0,
 
@@ -67,25 +67,20 @@ void processSoftTasksAsync(void){
 #include "dsp.h"
 #include "ui.h"
 
-bool* syncSchedFlagPtr =  &dspRingHalf;
-bool syncSchedFlagPtrOld;
+bool* syncSchedFlagPtr =  &dspRingHalf;	//pointer to flag to clock scheduler counter
+//bool syncSchedFlagPtrOld;
 
 uint16_t tix[SYNC_TASK_NR] = {0};
 
 int currSyncTask = 0;
 
-/*
-const void (*gfxQueuePtr[SYNC_TASK_NR])() = {
-		gfxWFredraw,
-		gfxFFTredraw,
-		gfxItemsRedraw,
-};
-*/
+int gfxUpdates = 0;
 
 void processSoftTasksSync(void){
-
+	static syncSchedFlagPtrOld;
 	if (*syncSchedFlagPtr != syncSchedFlagPtrOld){
-		//gfxUpdateQueue();
+
+		gfxUpdates++;
 
 
 		if (currSyncTask < SYNC_TASK_NR) currSyncTask++;
@@ -93,19 +88,21 @@ void processSoftTasksSync(void){
 
 		uint16_t timeStart = preciseTimerValue();
 
-		//while (spiBusy) {}
-		//if (!spiBusy){
-			switch (currSyncTask){
-				//case 0: {gfxWFredraw(0); break;}
-				case 0: {gfxWFredraw(); break;}
-				case 1: {gfxFFTredraw(); break;}
-				case 2: {gfxItemsRedraw(); break;}
-		//	}
+		switch (currSyncTask){
+			case 0: {gfxWFredraw(); break;}
+			case 1: {gfxFFTredraw(); break;}
+			case 2: {	gfxItemsRedraw();
+						gfxVFOredraw();
+						break;
+					}
 		}
 
+
+
 		updateUiGfx();
+
 		//gfxQueuePtr[currSyncTask]();
-		tix[currSyncTask] = preciseTimerValue()-timeStart;
+		tix[currSyncTask] = preciseTimerValue() - timeStart;
 		//
 
 		syncSchedFlagPtrOld = *syncSchedFlagPtr;

@@ -27,20 +27,8 @@ int	freqkHz;
 int	freqHz;
 
 void gfxItemsInit(void){
-	testVFOfreq = 14.123456f;
-	freqInt = testVFOfreq*1000000;
-	freqMHz = freqInt/1000000;
-	freqkHz = freqInt/1000 - freqMHz*1000;
-	freqHz	= freqInt - freqkHz*1000 - freqMHz*1000000;
-
-	gfxLabelSet(G_VFO_VAL_KHZ, "%u.%u", 	freqMHz, freqkHz);
-	gfxLabelSet(G_VFO_VAL_HZ, "%u", freqHz);
-
-
 	for (int i=0; i<GFX_ITEM_NR; i++)
 		gfxItems[i].pendUpd = 1;
-
-
 }
 
 void gfxLabelSet(int itemID, const char *fmt, ...){
@@ -50,8 +38,8 @@ void gfxLabelSet(int itemID, const char *fmt, ...){
 		va_start(args, fmt);
 		int rc = vsnprintf(gfxItems[itemID].text, sizeof(gfxItems[itemID].text), fmt, args);
 		va_end(args);
-		char nlBuf[] = {"\r\n"};
-		strcat(gfxItems[itemID].text, nlBuf);
+		//char nlBuf[] = {"\0"};
+		//strcat(gfxItems[itemID].text, nlBuf);
 		gfxItems[itemID].pendUpd = 1;
 	}
 }
@@ -66,11 +54,23 @@ void gfxBarSet(int itemID, float value){
 }
 
 
+#include "rtc.h"
+
+//TM_RTC_Result_t TM_RTC_SetDateTime(TM_RTC_t* data, TM_RTC_Format_t format);
+
 void btnTest1(void){
-	ili9341_fill_rect(_screen, COLOR_CYAN, 200, 200, 20, 20);
+	ili9341_fill_rect(_screen, (uint16_t)(rand()%32768), 300, 0, 20, 20);
+
+	TM_RTC_t a;
+	TM_RTC_GetDateTime(&a, TM_RTC_Format_BIN);
+	a.Hours = rand()%24;
+	a.Minutes = rand()%60;
+	a.Seconds = 0;
+	TM_RTC_SetDateTime(&a, TM_RTC_Format_BIN);
 }
 void btnTest2(void){
 	ili9341_fill_rect(_screen, COLOR_MAROON, 200, 200, 20, 20);
+
 }
 
 int gfxCurrentScreen = G_SCREEN_MAIN;
@@ -91,7 +91,8 @@ int wfRedrawStage = 0;
 #include "audio_cfg.h"
 #include "dsp.h"
 #include "flash.h"
-
+#include "adc.h"
+#include "radio_state.h"
 
 void gfxDbgDataUpd(void){
 	//gfxBarSet(G_BAR_AUDIOLOAD, getAudioLoadPossible());
@@ -112,11 +113,16 @@ void gfxDbgDataUpd(void){
 	//debugPrintFast("%08X", );
 
 	//debugPrintFast("t%u%% d%u%%", (int)dspLoad, (int)tasksLoad);
-	//debugPrintFast("%u %u %u %08X", 	tix[0], tix[1], tix[2], flash.ID);
-	debugPrintFast("%08X | %02x%02X%02X | %02X", 	flash.ID, flash.jC, flash.jID, flash.jM, flash.UniqID[0]);
+	debugPrintFast("dsp%u wf%u fft%u tem%u [%u]",dspTotalTime, tix[0], tix[1], tix[2], dspOverrunCounter);
+	//debugPrintFast("%u %u", 	dspEntries, gfxUpdates);
+	//debugPrintFast("%08X | %02x%02X%02X | %02X", 	flash.ID, flash.jC, flash.jID, flash.jM, flash.UniqID[0]);
 									//softTasks[TASK_GFX_UPDATE].ticksTook,
 									//softTasks[TASK_ADC].ticksTook,
 									//softTasks[TASK_DBGUPD].ticksTook);
+
+	//debugPrintFast("%u", adcCh[ADC_BUTTONS].ADCsmooth);
+
+	radio.vfoFreqHz[0]++;
 }
 
 #include "ui.h"
@@ -157,8 +163,54 @@ void scrollWF(void){
 
 */
 
+#include "radio_state.h"
 
-#define WF_REDRAW_STAGES	(2)
+uint32_t oldVFOfreqHz = -1;
+int oldVFOnums[8] = {9, 9, 9, 9, 9, 9, 9, 9, 9};
+
+void gfxVFOredraw(void){
+
+	uint32_t currentFreqHz = radio.vfoFreqHz[0];
+	unsigned int dig = 8;
+
+	int VFOnums[8];
+
+
+	if (currentFreqHz != oldVFOfreqHz){
+		while (dig--) {
+			VFOnums[dig] = currentFreqHz % 10;
+			currentFreqHz /= 10;
+		}
+
+		thisTextAttr.bg_color = COLOR_BLACK;
+		thisTextAttr.fg_color = COLOR_GREEN;
+		thisTextAttr.font = &ili9341_font_vfo_big;
+		thisTextAttr.origin_y = UI_PANEL_UP_H + 5;
+
+		for (int i=0; i<5; i++){
+			thisTextAttr.origin_x = 30 + i * thisTextAttr.font->width;
+			if (VFOnums[i] != oldVFOnums[i]){
+				ili9341_draw_char(_screen, thisTextAttr, (char)(VFOnums[i] + 48));
+				oldVFOnums[i] = VFOnums[i];
+			}
+		}
+
+		thisTextAttr.font = &ili9341_font_vfo_small;
+		thisTextAttr.origin_y += (ili9341_font_vfo_big.height - ili9341_font_vfo_small.height);
+
+		for (int i=5; i<8; i++){
+			thisTextAttr.origin_x = 30 + ili9341_font_vfo_big.width*5 + (i - 5) * thisTextAttr.font->width;
+			if (VFOnums[i] != oldVFOnums[i]){
+				ili9341_draw_char(_screen, thisTextAttr, (char)(VFOnums[i] + 48));
+				oldVFOnums[i] = VFOnums[i];
+			}
+		}
+
+		oldVFOfreqHz = radio.vfoFreqHz[0];
+	}
+}
+
+#define WF_REDRAW_STAGES	(1)
 
 void gfxFFTredraw(void){
 		if (wfRedrawStage < WF_REDRAW_STAGES-1) wfRedrawStage++;
@@ -174,24 +226,20 @@ void gfxFFTredraw(void){
 				uint16_t thisColor = fftPowerColors[fftMagnitudesdB[bin]*5];
 
 				if (fftMagnitudes[bin] < fftMagnitudesOld[bin]){
-					//spiBusy = 1;
 					ili9341_fill_rect_up(	_screen,
 											COLOR_BLACK,
 											thisBarX,
 											FFT_POS_Y,
 											WF_BAR_W,
 											FFT_H);
-					//spiBusy = 0;
 				}
 
-				//spiBusy = 1;
 				ili9341_fill_rect_up(	_screen,
 										(thisColor),
 										thisBarX,
 										FFT_POS_Y,
 										WF_BAR_W,
 										fftMagnitudesdB[bin]*FFT_H/50);
-				//spiBusy = 0;
 
 				wfNewPixelStrip[bin * WF_BAR_W] = thisColor;
 				wfNewPixelStrip[bin * WF_BAR_W + 1] = thisColor;
@@ -228,7 +276,8 @@ void gfxItemsRedraw(void){
 	for (int itemID=0; itemID<GFX_ITEM_NR; itemID++){
 		gfxItemCommon_t *i = &gfxItems[itemID];
 		if (i->screen == gfxCurrentScreen){
-			if (i->pendUpd && i->isShown){
+			if (i -> pendUpd){
+				if (i -> isShown){
 				switch(i->type){
 					case G_TYPE_LABEL: {
 						int txtSize = i->size.X;
@@ -279,14 +328,12 @@ void gfxItemsRedraw(void){
 						break;
 					}
 
-					case G_TYPE_INDICATOR: {
-						break;
-					}
-
 					default: break;
 				}
 				gfxItems[itemID].pendUpd = 0;
 			}
+		}
+
 		}
 	}
 }

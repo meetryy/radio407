@@ -25,3 +25,5 @@
 #define UI_PANEL_R_SPACING_X	1
 
 void updateUiGfx(void);
+void uiScrollLowerPanel(int delta);
+

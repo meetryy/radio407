@@ -35,3 +35,15 @@ void genGetValue(float *outBuffer, int16_t blockSize, int genNumber, int signalT
 		else if (signalType == GEN_COS) outBuffer[i] = arm_cos_f32((float)genData[genNumber].phase);
 	}
 }
+
+void genGetValueSinCos(float *outSin, float *outCos, int16_t blockSize, int genNumber){
+	//double thisPhase = 0;
+	for(int i = 0; i < blockSize; i++){
+		genData[genNumber].phase += genData[genNumber].phaseInc;
+		while (genData[genNumber].phase > M_2PI)
+			genData[genNumber].phase -= M_2PI;
+
+		arm_sin_cos_f32((float)genData[genNumber].phase, &outSin[i], &outCos[i]);
+	}
+}
+

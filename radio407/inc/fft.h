@@ -5,7 +5,8 @@
 #include <stdint.h>
 
 
-#define FFT_LEN			(AUDIO_BUFFER_LEN/8)
+//#define FFT_LEN			(AUDIO_BUFFER_LEN/16)
+#define FFT_LEN			(256)
 #define FFT_USEFUL_BINS	(FFT_LEN/2)
 #define FFT_HZ_PER_BIN	(AUDIO_BUFFER_HALF/FFT_LEN)
 
@@ -15,7 +16,7 @@
 extern volatile uint8_t fftMagnitudesdB[FFT_LEN];
 extern volatile uint8_t fftMagnitudes[FFT_LEN];
 extern volatile uint8_t fftMagnitudesOld[FFT_LEN];
-extern volatile float FFTbuffer[FFT_LEN*2];
+extern volatile float 	FFTbuffer[FFT_LEN*2];
 
 extern int maxIndex;
 extern float maxValue;

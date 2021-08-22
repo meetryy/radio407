@@ -19,6 +19,7 @@ extern int32_t dspTotalTime;
 extern float Ttest;
 extern float wttest;
 extern uint32_t dspEntries;
+extern int dspOverrunCounter;
 
 void dspInit(void);
 void dspStartAudio(void);

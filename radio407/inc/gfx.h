@@ -9,7 +9,7 @@ int Y;
 
 enum gfxItemList {
 	G_BAR_ELSELOAD,
-	G_DEBUG_STRING,
+
 	G_TEST_FLOAT,
 
 	G_BAR,
@@ -46,7 +46,7 @@ enum gfxItemList {
 
 	G_SMETER,
 
-
+	G_DEBUG_STRING,
 	GFX_ITEM_NR
 };
 
@@ -107,6 +107,7 @@ Point_t Point(int X, int Y);
 void scrollWF(void);
 void gfxWFredraw();
 void gfxFFTredraw(void);
+void gfxVFOredraw(void);
 
 #define COLOR_BLACK         0x0000
 #define COLOR_NAVY          0x000F
